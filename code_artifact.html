@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>디지털 논리 게이트 시뮬레이터</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#111827', 950: '#020617' },
+                        indigo: { 950: '#1e1b4b' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons & Font -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        canvas { touch-action: none; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden select-none">
+    <!-- Header -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-5 shadow-lg z-20">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600/20 border border-indigo-500/30 rounded-xl">
+                <i data-lucide="cpu" class="w-5 h-5 text-indigo-400"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base tracking-tight bg-gradient-to-r from-indigo-300 via-sky-200 to-indigo-400 bg-clip-text text-transparent">
+                    디지털 논리 게이트 시뮬레이터
+                </h1>
+                <p class="text-[11px] text-slate-400">디지털 회로와 컴퓨터 가산기의 작동 원리 배우기</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button id="tabGame" onclick="switchTab('game')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-md transition-all flex items-center gap-2">
+                <i data-lucide="gamepad-2" class="w-4 h-4"></i> 스테이지 학습
+            </button>
+            <button id="tabSandbox" onclick="switchTab('sandbox')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2">
+                <i data-lucide="boxes" class="w-4 h-4"></i> 자유 샌드박스
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar Palette -->
+        <aside class="w-72 bg-slate-900/90 border-r border-slate-800 flex flex-col z-10 backdrop-blur-md">
+            <!-- Stage Selector (Game Mode Only) -->
+            <div id="stageSelectContainer" class="p-4 border-b border-slate-800/80 bg-slate-950/40">
+                <label class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block mb-2">
+                    <i data-lucide="flag" class="w-3.5 h-3.5 inline mr-1"></i> 학습 스테이지 선택 (1~12)
+                </label>
+                <select id="stageSelect" onchange="loadStage(parseInt(this.value))" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium cursor-pointer">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Components Library -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-5">
+                <!-- IO Components Section -->
+                <div>
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <i data-lucide="toggle-left" class="w-3.5 h-3.5 text-sky-400"></i> 입출력 부품
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="addNode('INPUT', 1)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-sky-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>1비트 입력</span>
+                        </button>
+                        <button onclick="addNode('OUTPUT', 1)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>1비트 출력</span>
+                        </button>
+                        <button onclick="addNode('INPUT', 2)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-sky-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>2비트 입력</span>
+                        </button>
+                        <button onclick="addNode('OUTPUT', 2)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>2비트 출력</span>
+                        </button>
+                        <button onclick="addNode('INPUT', 3)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-sky-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>3비트 입력</span>
+                        </button>
+                        <button onclick="addNode('OUTPUT', 3)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>3비트 출력</span>
+                        </button>
+                        <button onclick="addNode('INPUT', 4)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-sky-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>4비트 입력</span>
+                        </button>
+                        <button onclick="addNode('OUTPUT', 4)" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center justify-center transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span>4비트 출력</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Logic Gates Section -->
+                <div>
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <i data-lucide="cpu" class="w-3.5 h-3.5 text-indigo-400"></i> 논리 게이트
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="addNode('AND')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">AND</span>
+                            <span class="text-[9px] text-slate-400">모두 참일 때 1</span>
+                        </button>
+                        <button onclick="addNode('OR')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">OR</span>
+                            <span class="text-[9px] text-slate-400">하나라도 참이면 1</span>
+                        </button>
+                        <button onclick="addNode('NOT')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">NOT</span>
+                            <span class="text-[9px] text-slate-400">신호 반전</span>
+                        </button>
+                        <button onclick="addNode('XOR')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">XOR</span>
+                            <span class="text-[9px] text-slate-400">서로 다를 때 1</span>
+                        </button>
+                        <button onclick="addNode('NAND')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">NAND</span>
+                            <span class="text-[9px] text-slate-400">AND의 반대</span>
+                        </button>
+                        <button onclick="addNode('NOR')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">NOR</span>
+                            <span class="text-[9px] text-slate-400">OR의 반대</span>
+                        </button>
+                        <button onclick="addNode('XNOR')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">XNOR</span>
+                            <span class="text-[9px] text-slate-400">서로 같을 때 1</span>
+                        </button>
+                        <button onclick="addNode('BUFFER')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs font-semibold flex flex-col items-center gap-0.5 transition-all text-slate-200 shadow-sm active:scale-95">
+                            <span class="font-bold text-indigo-400 text-xs">BUFFER</span>
+                            <span class="text-[9px] text-slate-400">신호 유지</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Example Circuits (Sandbox Only) -->
+                <div id="sandboxExamples" class="hidden">
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i> 프리셋 샘플 회로
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('halfAdder')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                반가산기 (Half Adder)
+                            </button>
+                            <button onclick="showPresetDescription('halfAdder')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('fullAdder')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                전가산기 (Full Adder)
+                            </button>
+                            <button onclick="showPresetDescription('fullAdder')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('mux')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                2대1 멀티플렉서 (MUX)
+                            </button>
+                            <button onclick="showPresetDescription('mux')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('latch')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                SR 래치 (메모리 회로)
+                            </button>
+                            <button onclick="showPresetDescription('latch')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('majority')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                다수결 회로 (Majority)
+                            </button>
+                            <button onclick="showPresetDescription('majority')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('decoder')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                2비트 디코더 (Decoder)
+                            </button>
+                            <button onclick="showPresetDescription('decoder')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="loadPresetCircuit('xorGateChain')" class="flex-1 p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-left transition-all text-slate-200">
+                                4비트 패리티 체인 (Parity)
+                            </button>
+                            <button onclick="showPresetDescription('xorGateChain')" class="p-2 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 hover:border-indigo-500/50 rounded-xl text-xs text-indigo-400 transition-all" title="설명 보기">
+                                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Canvas Display Area -->
+        <main class="flex-1 relative overflow-hidden bg-slate-950 flex flex-col">
+            <!-- Canvas Toolbar Top Bar -->
+            <div class="h-12 border-b border-slate-800/80 bg-slate-900/60 px-4 flex items-center justify-between z-10 backdrop-blur">
+                <div id="gameHeader" class="flex items-center gap-3">
+                    <span id="stageTitle" class="text-sm font-bold text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 px-2.5 py-1 rounded-md">
+                        [LV 1] 불을 켜라!
+                    </span>
+                    <span id="stageDesc" class="text-xs text-slate-400 font-medium">
+                        스위치를 켜서 출력이 1(ON)이 되도록 전선으로 연결해보세요.
+                    </span>
+                </div>
+                <!-- 샌드박스 모드일 때 빈 공간을 채워주는 flex-1 spacer -->
+                <div id="sandboxSpacer" class="hidden flex-1"></div>
+                <div class="flex items-center gap-2">
+                    <button id="btnHint" onclick="window.showHint()" class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95">
+                        <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-amber-400"></i> 힌트 보기
+                    </button>
+                    <button id="btnSolution" onclick="applySolution()" class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i> 정답 보기
+                    </button>
+                    <button onclick="resetCurrentStage()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-rose-950/50 border border-slate-700 hover:border-rose-800 text-slate-300 hover:text-rose-300 text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 초기화
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Canvas Box -->
+        <div class="flex-1 relative w-full h-full overflow-hidden">
+            <!-- Answer Applied Badge -->
+            <div id="answerBadge" class="hidden absolute top-4 left-4 z-10 bg-emerald-950/90 border border-emerald-600/80 text-emerald-300 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur shadow-lg flex items-center gap-2 animate-fade-in">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> 정답 회로가 배치되었습니다! 스위치를 작동해 신호를 확인해보세요.
+            </div>
+
+            <!-- Controls Help Badge -->
+            <div class="absolute bottom-4 left-4 z-10 bg-slate-900/80 border border-slate-800 text-slate-400 px-3 py-1.5 rounded-lg text-[11px] backdrop-blur flex items-center gap-3">
+                <span>🖱️ 우클릭/Space/Ctrl+드래그: 보드 이동</span>
+                <span>🔍 휠: 확대/축소</span>
+                <span>📋 Ctrl+C/V: 복사/붙여넣기</span>
+                <span>⌨️ Del/Backspace: 삭제</span>
+            </div>
+
+            <!-- Hint Modal Box -->
+            <div id="hintBox" class="hidden absolute top-4 right-4 z-20 bg-slate-900/95 border border-indigo-700/80 text-slate-100 p-4 rounded-xl shadow-2xl max-w-sm backdrop-blur transition-all">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+                        <div class="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
+                            <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400"></i> 스테이지 힌트
+                        </div>
+                        <button onclick="window.hideHint()" class="text-slate-400 hover:text-slate-200 text-xs font-bold px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition">✕</button>
+                    </div>
+                    <p id="hintText" class="text-xs text-slate-300 leading-relaxed">힌트 내용이 표시됩니다.</p>
+                </div>
+
+                <canvas id="simCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 전역 변수 및 상태 관리 ---
+        let canvas, ctx;
+        let currentTab = 'game'; // 'game' | 'sandbox'
+        let currentStageIdx = 0;
+        let nodes = [];
+        let wires = [];
+        let isDragging = false;
+        let draggedNode = null;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let connectingPin = null; // { node, type: 'in'|'out', index }
+        let selectedNode = null;
+        let selectedWire = null;
+        let copiedNodeData = null; // 복사된 부품 데이터 저장
+        let nodeIdCounter = 1;
+        let completedStages = {}; // 클리어된 스테이지 기록 객체 추가
+
+        // View Transform State (Pan & Zoom)
+        let panX = 0, panY = 0;
+        let zoom = 1;
+        let isPanning = false;
+        let startPanX = 0, startPanY = 0;
+        let spacePressed = false;
+
+        // Mouse Position tracking
+        let currentMousePos = { x: 0, y: 0 };
+        let worldMousePos = { x: 0, y: 0 };
+
+        // 전역 안전 힌트 제어 함수
+        window.hideHint = function() {
+            const hintBox = document.getElementById('hintBox');
+            if (hintBox) hintBox.classList.add('hidden');
+        };
+
+        window.showHint = function() {
+            if (typeof stages === 'undefined' || typeof currentStageIdx === 'undefined') return;
+            const stg = stages[currentStageIdx];
+            const hintBox = document.getElementById('hintBox');
+            const hintText = document.getElementById('hintText');
+            if (hintBox && hintText && stg) {
+                hintText.innerText = stg.hint;
+                hintBox.classList.remove('hidden');
+                if (window.lucide) lucide.createIcons();
+            }
+        };
+
+        // --- 12단계 스테이지 데이터 정의 ---
+        const stages = [
+            {
+                id: 1,
+                title: "불을 켜라!",
+                desc: "스위치를 켜서 출력이 1(ON)이 되도록 전선으로 연결해보세요.",
+                hint: "1비트 입력 스위치의 우측 핀에서 1비트 출력 전구의 좌측 핀으로 전선을 연결하세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 200);
+                    addNode('OUTPUT', 1, 450, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const inNode = addNode('INPUT', 1, 100, 200);
+                    const outNode = addNode('OUTPUT', 1, 450, 200);
+                    wires.push({ fromNode: inNode, fromPin: 0, toNode: outNode, toPin: 0 });
+                }
+            },
+            {
+                id: 2,
+                title: "AND 게이트",
+                desc: "두 입력이 모두 1일 때만 출력이 1이 되도록 회로를 구성해보세요.",
+                hint: "왼쪽 사이드바에서 AND 게이트를 꺼내어 입력과 출력을 연결하세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 150);
+                    addNode('INPUT', 1, 100, 270);
+                    addNode('OUTPUT', 1, 480, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 150);
+                    const in2 = addNode('INPUT', 1, 100, 270);
+                    const gate = addNode('AND', 1, 280, 200);
+                    const out = addNode('OUTPUT', 1, 480, 200);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: gate, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: gate, toPin: 1 });
+                    wires.push({ fromNode: gate, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 3,
+                title: "OR 게이트",
+                desc: "둘 중 하나라도 1이면 출력이 1이 되는 OR 게이트를 테스트해보세요.",
+                hint: "입력 스위치 2개와 OR 게이트, 출력을 연결하세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 150);
+                    addNode('INPUT', 1, 100, 270);
+                    addNode('OUTPUT', 1, 480, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 150);
+                    const in2 = addNode('INPUT', 1, 100, 270);
+                    const gate = addNode('OR', 1, 280, 200);
+                    const out = addNode('OUTPUT', 1, 480, 200);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: gate, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: gate, toPin: 1 });
+                    wires.push({ fromNode: gate, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 4,
+                title: "NOT 게이트 (청개구리)",
+                desc: "입력이 0일 때 1이 되고, 1일 때 0이 되는 NOT 게이트를 확인하세요.",
+                hint: "1비트 입력 신호를 NOT 게이트를 거쳐 출력 부품으로 연결해보세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 200);
+                    addNode('OUTPUT', 1, 480, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 200);
+                    const gate = addNode('NOT', 1, 280, 200);
+                    const out = addNode('OUTPUT', 1, 480, 200);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: gate, toPin: 0 });
+                    wires.push({ fromNode: gate, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 5,
+                title: "신호 분배",
+                desc: "하나의 입력 신호를 두 개의 출력으로 동시에 전달해보세요.",
+                hint: "하나의 입력 핀에서 출발하여 두 개의 다른 출력 핀으로 각각 전선을 연결하세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 200);
+                    addNode('OUTPUT', 1, 450, 140);
+                    addNode('OUTPUT', 1, 450, 260);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 200);
+                    const out1 = addNode('OUTPUT', 1, 450, 140);
+                    const out2 = addNode('OUTPUT', 1, 450, 260);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: out1, toPin: 0 });
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: out2, toPin: 0 });
+                }
+            },
+            {
+                id: 6,
+                title: "XOR 게이트",
+                desc: "두 입력 신호가 서로 다를 때만 1이 되는 XOR 게이트 회로를 만들어보세요.",
+                hint: "두 입력 스위치를 XOR 게이트에 연결하고 출력을 확인해보세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 150);
+                    addNode('INPUT', 1, 100, 270);
+                    addNode('OUTPUT', 1, 480, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 150);
+                    const in2 = addNode('INPUT', 1, 100, 270);
+                    const gate = addNode('XOR', 1, 280, 200);
+                    const out = addNode('OUTPUT', 1, 480, 200);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: gate, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: gate, toPin: 1 });
+                    wires.push({ fromNode: gate, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 7,
+                title: "덧셈의 원리 (1+1=0)",
+                desc: "컴퓨터 덧셈에서 1+1=0 (올림수 제외)이 되는 XOR 합(Sum) 연산을 연결해보세요.",
+                hint: "두 1비트 입력과 XOR 게이트, 출력을 연결해 덧셈의 첫 번째 비트를 구해보세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 150);
+                    addNode('INPUT', 1, 100, 270);
+                    addNode('OUTPUT', 1, 480, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 150);
+                    const in2 = addNode('INPUT', 1, 100, 270);
+                    const gate = addNode('XOR', 1, 280, 200);
+                    const out = addNode('OUTPUT', 1, 480, 200);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: gate, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: gate, toPin: 1 });
+                    wires.push({ fromNode: gate, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 8,
+                title: "올림수(Carry) 감지",
+                desc: "1+1일 때 다음 자릿수로 올라가는 올림수(Carry) 신호를 AND 게이트로 감지하세요.",
+                hint: "두 입력 신호를 AND 게이트에 연결하여 둘 다 1일 때만 올림수 불이 켜지게 하세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 100, 150);
+                    addNode('INPUT', 1, 100, 270);
+                    addNode('OUTPUT', 1, 480, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 100, 150);
+                    const in2 = addNode('INPUT', 1, 100, 270);
+                    const gate = addNode('AND', 1, 280, 200);
+                    const out = addNode('OUTPUT', 1, 480, 200);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: gate, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: gate, toPin: 1 });
+                    wires.push({ fromNode: gate, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 9,
+                title: "반가산기(Half Adder) 완성",
+                desc: "XOR(합 Sum)과 AND(올림수 Carry)를 조합하여 2비트 출력에 연결해보세요.",
+                hint: "XOR 연산 결과는 Bit 0 (Sum)에, AND 연산 결과는 Bit 1 (Carry)에 연결하세요.",
+                setup: () => {
+                    addNode('INPUT', 1, 80, 140);
+                    addNode('INPUT', 1, 80, 260);
+                    addNode('OUTPUT', 2, 480, 190);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const in1 = addNode('INPUT', 1, 80, 140);
+                    const in2 = addNode('INPUT', 1, 80, 260);
+                    const xorG = addNode('XOR', 1, 260, 140);
+                    const andG = addNode('AND', 1, 260, 260);
+                    const out = addNode('OUTPUT', 2, 480, 190);
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: xorG, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: xorG, toPin: 1 });
+                    wires.push({ fromNode: in1, fromPin: 0, toNode: andG, toPin: 0 });
+                    wires.push({ fromNode: in2, fromPin: 0, toNode: andG, toPin: 1 });
+                    wires.push({ fromNode: xorG, fromPin: 0, toNode: out, toPin: 0 }); // Sum -> Input 0
+                    wires.push({ fromNode: andG, fromPin: 0, toNode: out, toPin: 1 }); // Carry -> Input 1
+                }
+            },
+            {
+                id: 10,
+                title: "3개 비트의 논리",
+                desc: "3비트 입력 중 홀수 개가 1일 때 출력이 1이 되도록 XOR 2개를 연결해보세요.",
+                hint: "첫 번째 XOR 게이트 결과를 두 번째 XOR 게이트 입력으로 직렬 연결하세요.",
+                setup: () => {
+                    addNode('INPUT', 3, 80, 180);
+                    addNode('OUTPUT', 1, 540, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const inBus = addNode('INPUT', 3, 80, 180);
+                    const xor1 = addNode('XOR', 1, 260, 150);
+                    const xor2 = addNode('XOR', 1, 400, 200);
+                    const out = addNode('OUTPUT', 1, 540, 200);
+                    wires.push({ fromNode: inBus, fromPin: 0, toNode: xor1, toPin: 0 }); // Bus Bit 0 -> xor1 pin 0
+                    wires.push({ fromNode: inBus, fromPin: 1, toNode: xor1, toPin: 1 }); // Bus Bit 1 -> xor1 pin 1
+                    wires.push({ fromNode: xor1, fromPin: 0, toNode: xor2, toPin: 0 }); // xor1 out -> xor2 pin 0
+                    wires.push({ fromNode: inBus, fromPin: 2, toNode: xor2, toPin: 1 }); // Bus Bit 2 -> xor2 pin 1
+                    wires.push({ fromNode: xor2, fromPin: 0, toNode: out, toPin: 0 });   // xor2 out -> out pin 0
+                }
+            },
+            {
+                id: 11,
+                title: "올림수 다수결 (Majority)",
+                desc: "3개의 입력 중 2개 이상이 1일 때 출력이 1이 되도록 회로를 완성해보세요.",
+                hint: "AND 게이트 3개와 OR 게이트를 이용해 두 개씩 조합한 신호를 확인하세요.",
+                setup: () => {
+                    addNode('INPUT', 3, 80, 200);
+                    addNode('OUTPUT', 1, 650, 200);
+                },
+                solution: () => {
+                    clearCanvas();
+                    const inBus = addNode('INPUT', 3, 80, 200);
+                    const and1 = addNode('AND', 1, 260, 100);
+                    const and2 = addNode('AND', 1, 260, 200);
+                    const and3 = addNode('AND', 1, 260, 300);
+                    const or1 = addNode('OR', 1, 420, 150);
+                    const or2 = addNode('OR', 1, 530, 200);
+                    const out = addNode('OUTPUT', 1, 650, 200);
+                    // A & B (Bus Bit 0 & Bit 1)
+                    wires.push({ fromNode: inBus, fromPin: 0, toNode: and1, toPin: 0 });
+                    wires.push({ fromNode: inBus, fromPin: 1, toNode: and1, toPin: 1 });
+                    // B & C (Bus Bit 1 & Bit 2)
+                    wires.push({ fromNode: inBus, fromPin: 1, toNode: and2, toPin: 0 });
+                    wires.push({ fromNode: inBus, fromPin: 2, toNode: and2, toPin: 1 });
+                    // A & C (Bus Bit 0 & Bit 2)
+                    wires.push({ fromNode: inBus, fromPin: 0, toNode: and3, toPin: 0 });
+                    wires.push({ fromNode: inBus, fromPin: 2, toNode: and3, toPin: 1 });
+
+                    wires.push({ fromNode: and1, fromPin: 0, toNode: or1, toPin: 0 });
+                    wires.push({ fromNode: and2, fromPin: 0, toNode: or1, toPin: 1 });
+                    wires.push({ fromNode: or1, fromPin: 0, toNode: or2, toPin: 0 });
+                    wires.push({ fromNode: and3, fromPin: 0, toNode: or2, toPin: 1 });
+                    wires.push({ fromNode: or2, fromPin: 0, toNode: out, toPin: 0 });
+                }
+            },
+            {
+                id: 12,
+                title: "마스터: 전가산기 (Full Adder)",
+                desc: "3개의 입력(A, B, Cin)을 받아 합(Sum)과 올림수(Cout)를 완벽히 계산하세요.",
+                hint: "두 개의 반가산기와 하나의 OR 게이트를 조합하면 완성됩니다.",
+                setup: () => {
+                    addNode('INPUT', 3, 60, 200);
+                    addNode('OUTPUT', 2, 600, 200);
+                },
+                solution: () => {
+                    loadPresetCircuit('fullAdder');
+                }
+            }
+        ];
+
+        // --- 노드(Node) 클래스 ---
+        class Node {
+            constructor(id, type, bitCount = 1, x = 100, y = 100, title = '') {
+                this.id = id;
+                this.type = type; // 'INPUT', 'OUTPUT', 'AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', 'XNOR', 'BUFFER'
+                this.bitCount = bitCount;
+                this.x = x;
+                this.y = y;
+                this.width = 90;
+                this.height = Math.max(60, bitCount * 36 + 20);
+                this.title = title || type;
+                this.values = new Array(bitCount).fill(0);
+                this.inputs = [];
+                this.outputs = [];
+
+                this.setupPins();
+            }
+
+            setupPins() {
+                this.inputs = [];
+                this.outputs = [];
+
+                if (this.type === 'INPUT') {
+                    for (let i = 0; i < this.bitCount; i++) {
+                        this.outputs.push({ val: 0 });
+                    }
+                } else if (this.type === 'OUTPUT') {
+                    for (let i = 0; i < this.bitCount; i++) {
+                        this.inputs.push({ val: 0 });
+                    }
+                } else if (this.type === 'NOT' || this.type === 'BUFFER') {
+                    this.inputs.push({ val: 0 });
+                    this.outputs.push({ val: 0 });
+                } else if (['AND', 'OR', 'XOR', 'NAND', 'NOR', 'XNOR'].includes(this.type)) {
+                    this.inputs.push({ val: 0 });
+                    this.inputs.push({ val: 0 });
+                    this.outputs.push({ val: 0 });
+                }
+            }
+
+            getPinPos(pinType, index) {
+                if (pinType === 'in') {
+                    const count = this.inputs.length;
+                    if (count === 1) {
+                        return { x: this.x, y: this.y + this.height / 2 };
+                    }
+                    const step = this.height / (count + 1);
+                    return { x: this.x, y: this.y + step * (index + 1) };
+                } else {
+                    const count = this.outputs.length;
+                    if (count === 1) {
+                        return { x: this.x + this.width, y: this.y + this.height / 2 };
+                    }
+                    const step = this.height / (count + 1);
+                    return { x: this.x + this.width, y: this.y + step * (index + 1) };
+                }
+            }
+
+            evaluate() {
+                if (this.type === 'INPUT') {
+                    for (let i = 0; i < this.bitCount; i++) {
+                        this.outputs[i].val = this.values[i];
+                    }
+                } else if (this.type === 'OUTPUT') {
+                    for (let i = 0; i < this.bitCount; i++) {
+                        this.values[i] = this.inputs[i].val;
+                    }
+                } else if (this.type === 'NOT') {
+                    this.outputs[0].val = this.inputs[0].val ? 0 : 1;
+                } else if (this.type === 'BUFFER') {
+                    this.outputs[0].val = this.inputs[0].val;
+                } else if (this.type === 'AND') {
+                    this.outputs[0].val = (this.inputs[0].val && this.inputs[1].val) ? 1 : 0;
+                } else if (this.type === 'OR') {
+                    this.outputs[0].val = (this.inputs[0].val || this.inputs[1].val) ? 1 : 0;
+                } else if (this.type === 'XOR') {
+                    this.outputs[0].val = (this.inputs[0].val !== this.inputs[1].val) ? 1 : 0;
+                } else if (this.type === 'NAND') {
+                    this.outputs[0].val = !(this.inputs[0].val && this.inputs[1].val) ? 1 : 0;
+                } else if (this.type === 'NOR') {
+                    this.outputs[0].val = !(this.inputs[0].val || this.inputs[1].val) ? 1 : 0;
+                } else if (this.type === 'XNOR') {
+                    this.outputs[0].val = (this.inputs[0].val === this.inputs[1].val) ? 1 : 0;
+                }
+            }
+
+            draw(ctx) {
+                // Node Base Box Style
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                ctx.shadowBlur = 10 / zoom;
+                ctx.shadowOffsetY = 4 / zoom;
+
+                // Card Body
+                ctx.fillStyle = selectedNode === this ? '#1e293b' : '#0f172a';
+                ctx.strokeStyle = selectedNode === this ? '#6366f1' : '#334155';
+                ctx.lineWidth = selectedNode === this ? 2.5 : 1.5;
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.width, this.height, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                // Header Title
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = 'bold 11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                const headerTitle = this.type === 'INPUT' ? `${this.bitCount}비트 입력` :
+                                    this.type === 'OUTPUT' ? `${this.bitCount}비트 출력` : this.type;
+                ctx.fillText(headerTitle, this.x + this.width / 2, this.y + 16);
+
+                // Draw Internal Logic Gate Symbol Graphics
+                const cx = this.x + this.width / 2;
+                const cy = this.y + this.height / 2 + 6;
+                ctx.save();
+                ctx.strokeStyle = '#6366f1';
+                ctx.fillStyle = '#1e1b4b';
+                ctx.lineWidth = 1.5;
+
+                if (this.type === 'AND') {
+                    // AND Gate Symbol: D-shape
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 14, cy - 14);
+                    ctx.lineTo(cx - 4, cy - 14);
+                    ctx.arc(cx - 4, cy, 14, -Math.PI/2, Math.PI/2);
+                    ctx.lineTo(cx - 14, cy + 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'OR') {
+                    // OR Gate Symbol: Curved shield shape
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 16, cy - 14);
+                    ctx.quadraticCurveTo(cx - 8, cy - 14, cx + 10, cy);
+                    ctx.quadraticCurveTo(cx - 8, cy + 14, cx - 16, cy + 14);
+                    ctx.quadraticCurveTo(cx - 10, cy, cx - 16, cy - 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'NOT') {
+                    // NOT Gate Symbol: Triangle + Bubble
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 12, cy - 12);
+                    ctx.lineTo(cx + 8, cy);
+                    ctx.lineTo(cx - 12, cy + 12);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Inverter bubble
+                    ctx.beginPath();
+                    ctx.arc(cx + 11, cy, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'XOR') {
+                    // XOR Gate Symbol: Curved OR + extra curved back line
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 18, cy - 14);
+                    ctx.quadraticCurveTo(cx - 12, cy - 14, cx - 6, cy);
+                    ctx.quadraticCurveTo(cx - 12, cy + 14, cx - 18, cy + 14);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 14, cy - 14);
+                    ctx.quadraticCurveTo(cx - 6, cy - 14, cx + 10, cy);
+                    ctx.quadraticCurveTo(cx - 6, cy + 14, cx - 14, cy + 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'NAND') {
+                    // NAND Gate Symbol: AND + Bubble
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 16, cy - 14);
+                    ctx.lineTo(cx - 6, cy - 14);
+                    ctx.arc(cx - 6, cy, 14, -Math.PI/2, Math.PI/2);
+                    ctx.lineTo(cx - 16, cy + 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Bubble
+                    ctx.beginPath();
+                    ctx.arc(cx + 11, cy, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'NOR') {
+                    // NOR Gate Symbol: OR + Bubble
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 18, cy - 14);
+                    ctx.quadraticCurveTo(cx - 10, cy - 14, cx + 8, cy);
+                    ctx.quadraticCurveTo(cx - 10, cy + 14, cx - 18, cy + 14);
+                    ctx.quadraticCurveTo(cx - 12, cy, cx - 18, cy - 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Bubble
+                    ctx.beginPath();
+                    ctx.arc(cx + 12, cy, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'XNOR') {
+                    // XNOR Gate Symbol: XOR + Bubble
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 20, cy - 14);
+                    ctx.quadraticCurveTo(cx - 14, cy - 14, cx - 8, cy);
+                    ctx.quadraticCurveTo(cx - 14, cy + 14, cx - 20, cy + 14);
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 16, cy - 14);
+                    ctx.quadraticCurveTo(cx - 8, cy - 14, cx + 8, cy);
+                    ctx.quadraticCurveTo(cx - 8, cy + 14, cx - 16, cy + 14);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    // Bubble
+                    ctx.beginPath();
+                    ctx.arc(cx + 12, cy, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (this.type === 'BUFFER') {
+                    // BUFFER Symbol: Triangle
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 12, cy - 12);
+                    ctx.lineTo(cx + 10, cy);
+                    ctx.lineTo(cx - 12, cy + 12);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                // Draw Internal Buttons for Input/Output
+                if (this.type === 'INPUT') {
+                    for (let i = 0; i < this.bitCount; i++) {
+                        const step = this.height / (this.bitCount + 1);
+                        const btnY = this.y + step * (i + 1) - 10;
+                        const btnX = this.x + 15;
+                        const btnW = 60;
+                        const btnH = 20;
+
+                        ctx.fillStyle = this.values[i] ? '#0284c7' : '#1e293b';
+                        ctx.strokeStyle = this.values[i] ? '#38bdf8' : '#475569';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = this.values[i] ? '#ffffff' : '#94a3b8';
+                        ctx.font = 'bold 10px Inter, sans-serif';
+                        ctx.fillText(this.values[i] ? '1' : '0', btnX + btnW / 2, btnY + 14);
+                    }
+                } else if (this.type === 'OUTPUT') {
+                    for (let i = 0; i < this.bitCount; i++) {
+                        const step = this.height / (this.bitCount + 1);
+                        const btnY = this.y + step * (i + 1) - 10;
+                        const btnX = this.x + 15;
+                        const btnW = 60;
+                        const btnH = 20;
+
+                        ctx.fillStyle = this.values[i] ? '#d97706' : '#1e293b';
+                        ctx.strokeStyle = this.values[i] ? '#fbbf24' : '#475569';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.roundRect(btnX, btnY, btnW, btnH, 6);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = this.values[i] ? '#ffffff' : '#94a3b8';
+                        ctx.font = 'bold 10px Inter, sans-serif';
+                        ctx.fillText(this.values[i] ? '1' : '0', btnX + btnW / 2, btnY + 14);
+                    }
+                }
+
+                // Draw Pins
+                // Input Pins (Square / Emerald Theme for Destination)
+                for (let i = 0; i < this.inputs.length; i++) {
+                    const pos = this.getPinPos('in', i);
+                    const val = this.inputs[i].val;
+                    const isConnectingSource = connectingPin && connectingPin.node === this && connectingPin.type === 'in' && connectingPin.index === i;
+
+                    if (isConnectingSource) {
+                        ctx.strokeStyle = '#10b981';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, 9, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    ctx.fillStyle = val ? '#34d399' : '#065f46';
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(pos.x - 5, pos.y - 5, 10, 10);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 각 핀의 비트 인덱스 번호 표시 (다중 비트 부품 대응)
+                    if (this.inputs.length > 1) {
+                        ctx.fillStyle = '#34d399';
+                        ctx.font = 'bold 9px Inter, sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.fillText(`[${i}]`, pos.x - 8, pos.y + 3);
+                    } else {
+                        ctx.fillStyle = '#34d399';
+                        ctx.font = 'bold 9px Inter, sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.fillText(`IN`, pos.x - 8, pos.y + 3);
+                    }
+                }
+
+                // Output Pins (Circle / Indigo-Sky Theme for Source)
+                for (let i = 0; i < this.outputs.length; i++) {
+                    const pos = this.getPinPos('out', i);
+                    const val = this.outputs[i].val;
+                    const isConnectingSource = connectingPin && connectingPin.node === this && connectingPin.type === 'out' && connectingPin.index === i;
+
+                    if (isConnectingSource) {
+                        ctx.strokeStyle = '#38bdf8';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, 11, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    ctx.fillStyle = val ? '#38bdf8' : '#1e3a8a';
+                    ctx.strokeStyle = '#6366f1';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 각 핀의 비트 인덱스 번호 표시 (다중 비트 부품 대응)
+                    if (this.outputs.length > 1) {
+                        ctx.fillStyle = '#38bdf8';
+                        ctx.font = 'bold 9px Inter, sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`[${i}]`, pos.x + 9, pos.y + 3);
+                    } else {
+                        ctx.fillStyle = '#38bdf8';
+                        ctx.font = 'bold 9px Inter, sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`OUT`, pos.x + 9, pos.y + 3);
+                    }
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Screen to World coordinates translation
+        function screenToWorld(sx, sy) {
+            return {
+                x: (sx - panX) / zoom,
+                y: (sy - panY) / zoom
+            };
+        }
+
+        // --- Helper Functions & Engine ---
+        function initCanvas() {
+            canvas = document.getElementById('simCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+
+            window.addEventListener('resize', resizeCanvas);
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('dblclick', onDoubleClick);
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            window.addEventListener('keydown', onKeyDown);
+            window.addEventListener('keyup', onKeyUp);
+
+            populateStageDropdown();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+
+        function populateStageDropdown() {
+            const select = document.getElementById('stageSelect');
+            if (!select) return;
+            select.innerHTML = '';
+            stages.forEach((stg, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                // 클리어된 스테이지는 목록에서 폭죽/별 표시
+                const isCleared = completedStages[i];
+                opt.textContent = `LV ${stg.id}. ${stg.title} ${isCleared ? '🎉✨ (클리어)' : ''}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function addNode(type, bitCount = 1, x = null, y = null) {
+            if (x === null || y === null) {
+                const center = screenToWorld(canvas.width / 2, canvas.height / 2);
+                x = center.x - 45;
+                y = center.y - 30;
+            } else {
+                // 그리드 간격(40px)에 맞춰서 스냅 정렬 적용
+                const gridSize = 40;
+                x = Math.round(x / gridSize) * gridSize;
+                y = Math.round(y / gridSize) * gridSize;
+            }
+            const node = new Node(nodeIdCounter++, type, bitCount, x, y);
+            nodes.push(node);
+            if (typeof draw === 'function') draw();
+            return node;
+        }
+
+        function clearCanvas() {
+            nodes = [];
+            wires = [];
+            selectedNode = null;
+            selectedWire = null;
+            connectingPin = null;
+            document.getElementById('answerBadge').classList.add('hidden');
+        }
+
+        function resetCurrentStage() {
+            if (currentTab === 'game') {
+                loadStage(currentStageIdx);
+            } else {
+                clearCanvas();
+            }
+        }
+
+        function resetPanZoom() {
+            panX = 0;
+            panY = 0;
+            zoom = 1;
+        }
+
+        // --- Keyboard Controls ---
+        function onKeyDown(e) {
+            if (e.code === 'Space') {
+                spacePressed = true;
+                canvas.style.cursor = 'grab';
+            }
+
+            // 복사 (Ctrl+C / Cmd+C)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                if (selectedNode) {
+                    copiedNodeData = {
+                        type: selectedNode.type,
+                        bitCount: selectedNode.bitCount,
+                        noteText: selectedNode.noteText
+                    };
+                }
+            }
+
+            // 붙여넣기 (Ctrl+V / Cmd+V)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                if (copiedNodeData) {
+                    const pastePos = worldMousePos;
+                    const newNode = addNode(copiedNodeData.type, copiedNodeData.bitCount, pastePos.x, pastePos.y);
+                    if (copiedNodeData.type === 'NOTE') {
+                        newNode.noteText = copiedNodeData.noteText;
+                    }
+                    selectedNode = newNode;
+                }
+            }
+
+            // 잘라내기 (Ctrl+X / Cmd+X)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                if (selectedNode) {
+                    copiedNodeData = {
+                        type: selectedNode.type,
+                        bitCount: selectedNode.bitCount,
+                        noteText: selectedNode.noteText
+                    };
+                    wires = wires.filter(w => w.fromNode !== selectedNode && w.toNode !== selectedNode);
+                    nodes = nodes.filter(n => n !== selectedNode);
+                    selectedNode = null;
+                }
+            }
+
+            // Delete or Backspace key to remove selected node/wire
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                // Prevent navigating back if typing in input
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+
+                if (selectedNode) {
+                    // Remove connected wires
+                    wires = wires.filter(w => w.fromNode !== selectedNode && w.toNode !== selectedNode);
+                    // Remove node
+                    nodes = nodes.filter(n => n !== selectedNode);
+                    selectedNode = null;
+                } else if (selectedWire) {
+                    wires = wires.filter(w => w !== selectedWire);
+                    selectedWire = null;
+                }
+            }
+        }
+
+        function onKeyUp(e) {
+            if (e.code === 'Space') {
+                spacePressed = false;
+                canvas.style.cursor = 'crosshair';
+            }
+        }
+
+        // Zoom handler
+        function onWheel(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newZoom = Math.min(Math.max(0.4, zoom * zoomFactor), 2.5);
+
+            // Zoom centered on cursor
+            panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+            panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+            zoom = newZoom;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabGame = document.getElementById('tabGame');
+            const tabSandbox = document.getElementById('tabSandbox');
+            const stageContainer = document.getElementById('stageSelectContainer');
+            const gameHeader = document.getElementById('gameHeader');
+            const sandboxSpacer = document.getElementById('sandboxSpacer');
+            const sandboxExamples = document.getElementById('sandboxExamples');
+            const btnHint = document.getElementById('btnHint');
+            const btnSolution = document.getElementById('btnSolution');
+
+            if (tab === 'game') {
+                tabGame.className = "px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-md transition-all flex items-center gap-2";
+                tabSandbox.className = "px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2";
+                stageContainer.classList.remove('hidden');
+                gameHeader.classList.remove('hidden');
+                if (sandboxSpacer) sandboxSpacer.classList.add('hidden');
+                sandboxExamples.classList.add('hidden');
+                if (btnHint) btnHint.classList.remove('hidden');
+                if (btnSolution) btnSolution.classList.remove('hidden');
+                loadStage(currentStageIdx);
+            } else {
+                tabSandbox.className = "px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow-md transition-all flex items-center gap-2";
+                tabGame.className = "px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2";
+                stageContainer.classList.add('hidden');
+                gameHeader.classList.add('hidden');
+                if (sandboxSpacer) sandboxSpacer.classList.remove('hidden');
+                sandboxExamples.classList.remove('hidden');
+                if (btnHint) btnHint.classList.add('hidden');
+                if (btnSolution) btnSolution.classList.add('hidden');
+                window.hideHint();
+                clearCanvas();
+            }
+        }
+
+        // --- Mouse Interaction Handlers ---
+        function onMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            currentMousePos = { x: mouseX, y: mouseY };
+            const worldPos = screenToWorld(mouseX, mouseY);
+            worldMousePos = worldPos;
+
+            // Pan Viewport (Right click, Space + Drag, or Ctrl + Left Click Drag without node selection)
+            if (e.button === 2 || spacePressed) {
+                isPanning = true;
+                startPanX = mouseX - panX;
+                startPanY = mouseY - panY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // Check Pin Click for Connecting Wire
+            for (let node of nodes) {
+                for (let i = 0; i < node.outputs.length; i++) {
+                    const pos = node.getPinPos('out', i);
+                    if (Math.hypot(pos.x - worldPos.x, pos.y - worldPos.y) < 12) {
+                        connectingPin = { node, type: 'out', index: i };
+                        return;
+                    }
+                }
+                for (let i = 0; i < node.inputs.length; i++) {
+                    const pos = node.getPinPos('in', i);
+                    if (Math.hypot(pos.x - worldPos.x, pos.y - worldPos.y) < 12) {
+                        connectingPin = { node, type: 'in', index: i };
+                        return;
+                    }
+                }
+            }
+
+            // Check Click inside Input Node Toggle Switch
+            for (let node of nodes) {
+                if (node.type === 'INPUT') {
+                    for (let i = 0; i < node.bitCount; i++) {
+                        const step = node.height / (node.bitCount + 1);
+                        const btnY = node.y + step * (i + 1) - 10;
+                        const btnX = node.x + 15;
+                        if (worldPos.x >= btnX && worldPos.x <= btnX + 60 && worldPos.y >= btnY && worldPos.y <= btnY + 20) {
+                            node.values[i] = node.values[i] ? 0 : 1;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Check Wire Selection
+            selectedWire = null;
+            for (let wire of wires) {
+                const p1 = wire.fromNode.getPinPos('out', wire.fromPin);
+                const p2 = wire.toNode.getPinPos('in', wire.toPin);
+                const midX = (p1.x + p2.x) / 2;
+                const midY = (p1.y + p2.y) / 2;
+                if (Math.hypot(midX - worldPos.x, midY - worldPos.y) < 15) {
+                    selectedWire = wire;
+                    selectedNode = null;
+                    return;
+                }
+            }
+
+            // Check Node Selection and Dragging
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const node = nodes[i];
+                if (worldPos.x >= node.x && worldPos.x <= node.x + node.width && worldPos.y >= node.y && worldPos.y <= node.y + node.height) {
+                    selectedNode = node;
+                    isDragging = true;
+                    draggedNode = node;
+                    dragOffsetX = worldPos.x - node.x;
+                    dragOffsetY = worldPos.y - node.y;
+                    return;
+                }
+            }
+
+            // If clicked empty space without node/pin, check if Ctrl is pressed to start panning
+            if ((e.ctrlKey || e.metaKey) && e.button === 0) {
+                isPanning = true;
+                startPanX = mouseX - panX;
+                startPanY = mouseY - panY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            selectedNode = null;
+        }
+
+        function onMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            currentMousePos = { x: mouseX, y: mouseY };
+            const worldPos = screenToWorld(mouseX, mouseY);
+            worldMousePos = worldPos;
+
+            if (isPanning) {
+                panX = mouseX - startPanX;
+                panY = mouseY - startPanY;
+                return;
+            }
+
+            if (isDragging && draggedNode) {
+                let newX = worldPos.x - dragOffsetX;
+                let newY = worldPos.y - dragOffsetY;
+
+                // 배경 그리드 간격(40px)에 맞춰서 정확히 일치하도록 스냅 이동 적용 (Ctrl 키 여부와 무관하게 항상 그리드에 맞춤)
+                const gridSize = 40;
+                newX = Math.round(newX / gridSize) * gridSize;
+                newY = Math.round(newY / gridSize) * gridSize;
+
+                draggedNode.x = newX;
+                draggedNode.y = newY;
+            }
+        }
+
+        function onMouseUp(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const worldPos = screenToWorld(mouseX, mouseY);
+
+            if (isPanning) {
+                isPanning = false;
+                canvas.style.cursor = spacePressed ? 'grab' : 'crosshair';
+            }
+
+            if (connectingPin) {
+                // Drop connection to another pin
+                for (let node of nodes) {
+                    const targetPinType = connectingPin.type === 'out' ? 'in' : 'out';
+                    const pins = targetPinType === 'in' ? node.inputs : node.outputs;
+
+                    for (let i = 0; i < pins.length; i++) {
+                        const pos = node.getPinPos(targetPinType, i);
+                        if (Math.hypot(pos.x - worldPos.x, pos.y - worldPos.y) < 14) {
+                            const from = connectingPin.type === 'out' ? connectingPin : { node, type: targetPinType, index: i };
+                            const to = connectingPin.type === 'out' ? { node, type: targetPinType, index: i } : connectingPin;
+
+                            // Prevent duplicate wire
+                            const exists = wires.some(w => w.fromNode === from.node && w.fromPin === from.index && w.toNode === to.node && w.toPin === to.index);
+                            if (!exists && from.node !== to.node) {
+                                wires.push({
+                                    fromNode: from.node,
+                                    fromPin: from.index,
+                                    toNode: to.node,
+                                    toPin: to.index
+                                });
+                            }
+                        }
+                    }
+                }
+                connectingPin = null;
+            }
+
+            isDragging = false;
+            draggedNode = null;
+        }
+
+        function onDoubleClick(e) {
+            // Placeholder for double click if needed
+        }
+
+        // --- Simulation Propagation Loop ---
+        function simulateCircuit() {
+            // Reset input pins values
+            for (let wire of wires) {
+                wire.toNode.inputs[wire.toPin].val = 0;
+            }
+
+            // Propagate values through wires iteratively
+            for (let iter = 0; iter < 10; iter++) {
+                for (let node of nodes) {
+                    node.evaluate();
+                }
+                for (let wire of wires) {
+                    const srcVal = wire.fromNode.outputs[wire.fromPin] ? wire.fromNode.outputs[wire.fromPin].val : 0;
+                    wire.toNode.inputs[wire.toPin].val = srcVal;
+                }
+            }
+
+            // Final evaluation
+            for (let node of nodes) {
+                node.evaluate();
+            }
+        }
+
+        let manualSolutionApplied = false;
+
+        function applySolution() {
+            if (currentTab !== 'game') return;
+            const stg = stages[currentStageIdx];
+            if (stg && typeof stg.solution === 'function') {
+                manualSolutionApplied = true;
+                stg.solution();
+                const badge = document.getElementById('answerBadge');
+                if (badge) badge.classList.remove('hidden');
+            }
+        }
+
+        // --- 스테이지별 목적 판정 로직 강화 ---
+        function checkStageCompletion() {
+            if (currentTab !== 'game') return;
+            const stg = stages[currentStageIdx];
+            if (!stg) return;
+
+            let isSuccess = false;
+            const stageId = stg.id;
+
+            // 각 스테이지별 입력 조합에 따른 정밀 논리 판정
+            if (stageId === 1) {
+                // LV 1: 불을 켜라! (입력이 1일 때 출력 1)
+                const inNode = nodes.find(n => n.type === 'INPUT');
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                isSuccess = inNode && outNode && inNode.values[0] === 1 && outNode.values[0] === 1;
+            } else if (stageId === 2) {
+                // LV 2: AND 게이트 (두 입력 모두 1일 때만 출력 1)
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                const gate = nodes.find(n => n.type === 'AND');
+                isSuccess = outNode && outNode.values[0] === 1 && gate && gate.inputs[0].val === 1 && gate.inputs[1].val === 1;
+            } else if (stageId === 3) {
+                // LV 3: OR 게이트 (하나라도 1일 때 출력 1)
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                isSuccess = outNode && outNode.values[0] === 1;
+            } else if (stageId === 4) {
+                // LV 4: NOT 게이트 (입력이 0일 때 출력 1)
+                const inNode = nodes.find(n => n.type === 'INPUT');
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                isSuccess = inNode && outNode && inNode.values[0] === 0 && outNode.values[0] === 1;
+            } else if (stageId === 5) {
+                // LV 5: 신호 분배 (출력 2개가 모두 1)
+                const outputs = nodes.filter(n => n.type === 'OUTPUT');
+                isSuccess = outputs.length >= 2 && outputs.every(o => o.values[0] === 1);
+            } else if (stageId === 6) {
+                // LV 6: XOR 게이트
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                const gate = nodes.find(n => n.type === 'XOR');
+                isSuccess = outNode && outNode.values[0] === 1 && gate && (gate.inputs[0].val !== gate.inputs[1].val);
+            } else if (stageId === 7) {
+                // LV 7: 덧셈의 원리 (XOR 합)
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                isSuccess = outNode && outNode.values[0] === 1;
+            } else if (stageId === 8) {
+                // LV 8: 올림수 감지 (AND)
+                const outNode = nodes.find(n => n.type === 'OUTPUT');
+                isSuccess = outNode && outNode.values[0] === 1;
+            } else if (stageId === 9) {
+                // LV 9: 반가산기 (Sum, Carry 2비트 출력)
+                const outNode = nodes.find(n => n.type === 'OUTPUT' && n.bitCount === 2);
+                isSuccess = outNode && (outNode.values[0] === 1 || outNode.values[1] === 1);
+            } else if (stageId === 10 || stageId === 11 || stageId === 12) {
+                // 고급 조합 회로
+                isSuccess = nodes.some(n => n.type === 'OUTPUT' && n.values.some(v => v === 1));
+            } else {
+                isSuccess = nodes.some(n => n.type === 'OUTPUT' && n.values.some(v => v === 1));
+            }
+
+            if (isSuccess && !manualSolutionApplied && !completedStages[currentStageIdx]) {
+                completedStages[currentStageIdx] = true;
+                populateStageDropdown();
+                showClearModal(stg.id, stg.title);
+            }
+        }
+
+        function showClearModal(stageId, stageTitle) {
+            // Remove existing modal if any
+            const existing = document.getElementById('stageClearModal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'stageClearModal';
+            modal.className = 'absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in';
+            modal.innerHTML = `
+                <div class="bg-slate-900 border border-emerald-500/50 p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center space-y-4">
+                    <div class="w-12 h-12 bg-emerald-500/20 border border-emerald-500/40 rounded-full flex items-center justify-center mx-auto text-emerald-400 text-xl font-bold">
+                        🎉
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100">스테이지 클리어 성공!</h2>
+                        <p class="text-xs text-slate-400 mt-1">[LV ${stageId}. ${stageTitle}] 회로가 성공적으로 작동했습니다.</p>
+                    </div>
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="closeClearModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition">
+                            계속 머무르기
+                        </button>
+                        <button onclick="nextStageFromModal()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg transition flex items-center justify-center gap-1.5">
+                            다음 스테이지 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            if (window.lucide) lucide.createIcons();
+        }
+
+        window.closeClearModal = function() {
+            const modal = document.getElementById('stageClearModal');
+            if (modal) modal.remove();
+        };
+
+        window.nextStageFromModal = function() {
+            closeClearModal();
+            if (currentStageIdx < stages.length - 1) {
+                loadStage(currentStageIdx + 1);
+            }
+        };
+
+        function loadStage(idx) {
+            currentStageIdx = idx;
+            manualSolutionApplied = false;
+            const stg = stages[idx];
+            if (!stg) return;
+
+            const titleEl = document.getElementById('stageTitle');
+            const descEl = document.getElementById('stageDesc');
+            const selectEl = document.getElementById('stageSelect');
+
+            if (titleEl) titleEl.innerText = `[LV ${stg.id}] ${stg.title}`;
+            if (descEl) descEl.innerText = stg.desc;
+            if (selectEl) selectEl.value = idx;
+
+            const badge = document.getElementById('answerBadge');
+            if (badge) badge.classList.add('hidden');
+            window.hideHint();
+
+            clearCanvas();
+            if (typeof stg.setup === 'function') {
+                stg.setup();
+            }
+        }
+
+        function loadPresetCircuit(type) {
+            clearCanvas();
+            if (type === 'halfAdder') {
+                const in1 = addNode('INPUT', 1, 80, 140);
+                const in2 = addNode('INPUT', 1, 80, 260);
+                const xorG = addNode('XOR', 1, 260, 140);
+                const andG = addNode('AND', 1, 260, 260);
+                const out = addNode('OUTPUT', 2, 480, 190);
+                wires.push({ fromNode: in1, fromPin: 0, toNode: xorG, toPin: 0 });
+                wires.push({ fromNode: in2, fromPin: 0, toNode: xorG, toPin: 1 });
+                wires.push({ fromNode: in1, fromPin: 0, toNode: andG, toPin: 0 });
+                wires.push({ fromNode: in2, fromPin: 0, toNode: andG, toPin: 1 });
+                wires.push({ fromNode: xorG, fromPin: 0, toNode: out, toPin: 0 });
+                wires.push({ fromNode: andG, fromPin: 0, toNode: out, toPin: 1 });
+            } else if (type === 'fullAdder') {
+                const inBus = addNode('INPUT', 3, 60, 200);
+                const xor1 = addNode('XOR', 1, 220, 120);
+                const and1 = addNode('AND', 1, 220, 220);
+                const xor2 = addNode('XOR', 1, 380, 150);
+                const and2 = addNode('AND', 1, 380, 260);
+                const orG = addNode('OR', 1, 520, 210);
+                const out = addNode('OUTPUT', 2, 660, 180);
+
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: xor1, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: xor1, toPin: 1 });
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: and1, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: and1, toPin: 1 });
+
+                wires.push({ fromNode: xor1, fromPin: 0, toNode: xor2, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 2, toNode: xor2, toPin: 1 });
+                wires.push({ fromNode: xor1, fromPin: 0, toNode: and2, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 2, toNode: and2, toPin: 1 });
+
+                wires.push({ fromNode: and2, fromPin: 0, toNode: orG, toPin: 0 });
+                wires.push({ fromNode: and1, fromPin: 0, toNode: orG, toPin: 1 });
+
+                wires.push({ fromNode: xor2, fromPin: 0, toNode: out, toPin: 0 });
+                wires.push({ fromNode: orG, fromPin: 0, toNode: out, toPin: 1 });
+            } else if (type === 'mux') {
+                const in0 = addNode('INPUT', 1, 80, 120);
+                const in1 = addNode('INPUT', 1, 80, 220);
+                const sel = addNode('INPUT', 1, 80, 320);
+                const notSel = addNode('NOT', 1, 220, 320);
+                const and1 = addNode('AND', 1, 360, 150);
+                const and2 = addNode('AND', 1, 360, 280);
+                const orG = addNode('OR', 1, 500, 210);
+                const out = addNode('OUTPUT', 1, 640, 210);
+
+                wires.push({ fromNode: sel, fromPin: 0, toNode: notSel, toPin: 0 });
+                wires.push({ fromNode: in0, fromPin: 0, toNode: and1, toPin: 0 });
+                wires.push({ fromNode: notSel, fromPin: 0, toNode: and1, toPin: 1 });
+                wires.push({ fromNode: in1, fromPin: 0, toNode: and2, toPin: 0 });
+                wires.push({ fromNode: sel, fromPin: 0, toNode: and2, toPin: 1 });
+                wires.push({ fromNode: and1, fromPin: 0, toNode: orG, toPin: 0 });
+                wires.push({ fromNode: and2, fromPin: 0, toNode: orG, toPin: 1 });
+                wires.push({ fromNode: orG, fromPin: 0, toNode: out, toPin: 0 });
+            } else if (type === 'latch') {
+                const r = addNode('INPUT', 1, 80, 140);
+                const s = addNode('INPUT', 1, 80, 280);
+                const nor1 = addNode('NOR', 1, 280, 160);
+                const nor2 = addNode('NOR', 1, 280, 260);
+                const outQ = addNode('OUTPUT', 1, 460, 160);
+                const outQNot = addNode('OUTPUT', 1, 460, 260);
+
+                wires.push({ fromNode: r, fromPin: 0, toNode: nor1, toPin: 0 });
+                wires.push({ fromNode: nor2, fromPin: 0, toNode: nor1, toPin: 1 });
+                wires.push({ fromNode: s, fromPin: 0, toNode: nor2, toPin: 1 });
+                wires.push({ fromNode: nor1, fromPin: 0, toNode: nor2, toPin: 0 });
+                wires.push({ fromNode: nor1, fromPin: 0, toNode: outQ, toPin: 0 });
+                wires.push({ fromNode: nor2, fromPin: 0, toNode: outQNot, toPin: 0 });
+            } else if (type === 'majority') {
+                const inBus = addNode('INPUT', 3, 60, 200);
+                const and1 = addNode('AND', 1, 240, 100);
+                const and2 = addNode('AND', 1, 240, 200);
+                const and3 = addNode('AND', 1, 240, 300);
+                const or1 = addNode('OR', 1, 400, 150);
+                const or2 = addNode('OR', 1, 520, 200);
+                const out = addNode('OUTPUT', 1, 640, 200);
+
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: and1, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: and1, toPin: 1 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: and2, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 2, toNode: and2, toPin: 1 });
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: and3, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 2, toNode: and3, toPin: 1 });
+
+                wires.push({ fromNode: and1, fromPin: 0, toNode: or1, toPin: 0 });
+                wires.push({ fromNode: and2, fromPin: 0, toNode: or1, toPin: 1 });
+                wires.push({ fromNode: or1, fromPin: 0, toNode: or2, toPin: 0 });
+                wires.push({ fromNode: and3, fromPin: 0, toNode: or2, toPin: 1 });
+                wires.push({ fromNode: or2, fromPin: 0, toNode: out, toPin: 0 });
+            } else if (type === 'decoder') {
+                const inBus = addNode('INPUT', 2, 80, 200);
+                const not0 = addNode('NOT', 1, 220, 140);
+                const not1 = addNode('NOT', 1, 220, 280);
+                const and1 = addNode('AND', 1, 380, 80);
+                const and2 = addNode('AND', 1, 380, 160);
+                const and3 = addNode('AND', 1, 380, 240);
+                const and4 = addNode('AND', 1, 380, 320);
+                const out = addNode('OUTPUT', 4, 560, 200);
+
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: not0, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: not1, toPin: 0 });
+
+                wires.push({ fromNode: not0, fromPin: 0, toNode: and1, toPin: 0 });
+                wires.push({ fromNode: not1, fromPin: 0, toNode: and1, toPin: 1 });
+
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: and2, toPin: 0 });
+                wires.push({ fromNode: not1, fromPin: 0, toNode: and2, toPin: 1 });
+
+                wires.push({ fromNode: not0, fromPin: 0, toNode: and3, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: and3, toPin: 1 });
+
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: and4, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: and4, toPin: 1 });
+
+                wires.push({ fromNode: and1, fromPin: 0, toNode: out, toPin: 0 });
+                wires.push({ fromNode: and2, fromPin: 0, toNode: out, toPin: 1 });
+                wires.push({ fromNode: and3, fromPin: 0, toNode: out, toPin: 2 });
+                wires.push({ fromNode: and4, fromPin: 0, toNode: out, toPin: 3 });
+            } else if (type === 'xorGateChain') {
+                const inBus = addNode('INPUT', 4, 80, 200);
+                const xor1 = addNode('XOR', 1, 240, 120);
+                const xor2 = addNode('XOR', 1, 380, 160);
+                const xor3 = addNode('XOR', 1, 520, 200);
+                const out = addNode('OUTPUT', 1, 660, 200);
+
+                wires.push({ fromNode: inBus, fromPin: 0, toNode: xor1, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 1, toNode: xor1, toPin: 1 });
+                wires.push({ fromNode: xor1, fromPin: 0, toNode: xor2, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 2, toNode: xor2, toPin: 1 });
+                wires.push({ fromNode: xor2, fromPin: 0, toNode: xor3, toPin: 0 });
+                wires.push({ fromNode: inBus, fromPin: 3, toNode: xor3, toPin: 1 });
+                wires.push({ fromNode: xor3, fromPin: 0, toNode: out, toPin: 0 });
+            }
+        }
+
+        // --- 프리셋 설명 데이터 및 모달 함수 ---
+        const presetDescriptions = {
+            halfAdder: {
+                title: "반가산기 (Half Adder)",
+                desc: "반가산기는 이진수 두 자리(A, B)를 더해 합(Sum)과 올림수(Carry)를 출력하는 가장 기본적인 조합 논리 회로입니다.\n\n• **Sum (합):** XOR 게이트를 통해 두 입력이 다를 때 1이 됩니다 (1+0=1).\n• **Carry (올림수):** AND 게이트를 통해 두 입력이 모두 1일 때만 1이 됩니다 (1+1=2, 올림수 발생)."
+            },
+            fullAdder: {
+                title: "전가산기 (Full Adder)",
+                desc: "전가산기는 두 개의 입력 비트(A, B)와 이전 자릿수에서 올라온 올림수(Cin)까지 총 3개의 입력을 더하는 회로입니다.\n\n• 두 개의 반가산기와 하나의 OR 게이트를 조합하여 구성합니다.\n• 다자리 이진수 덧셈을 수행할 때 필수적으로 사용되는 핵심 연산 블록입니다."
+            },
+            mux: {
+                title: "2대1 멀티플렉서 (MUX)",
+                desc: "멀티플렉서는 여러 개의 입력 신호 중 선택 신호(Select)에 따라 단 하나의 신호를 골라 출력하는 회로입니다.\n\n• Select가 0일 때는 Data 0 신호가 출력되고, Select가 1일 때는 Data 1 신호가 선택되어 출력됩니다.\n• 컴퓨터 내부 데이터 경로를 제어할 때 널리 쓰입니다."
+            },
+            latch: {
+                title: "SR 래치 (메모리 회로)",
+                desc: "SR 래치는 NOR 게이트들의 교차 피드백(귀환)을 이용해 이전의 상태를 기억(저장)할 수 있는 순차 논리 회로의 기본 형태입니다.\n\n• **Set (S):** 출력을 1 상태로 고정(저장)합니다.\n• **Reset (R):** 출력을 0 상태로 초기화합니다.\n• 컴퓨터 메모리(Flip-Flop)의 조상격인 회로입니다."
+            },
+            majority: {
+                title: "다수결 회로 (Majority)",
+                desc: "다수결 회로는 3개의 입력 비트 중 과반수(2개 이상)가 1일 때 출력이 1이 되는 논리 회로입니다.\n\n• 항공기 제어 시스템, 투표 시스템, 오류 정정 코드(ECC) 등에서 신호의 신뢰성을 검증할 때 주로 사용됩니다."
+            },
+            decoder: {
+                title: "2비트 디코더 (Decoder)",
+                desc: "2비트 디코더는 2개의 입력 조합(00, 01, 10, 11)을 받아 4개의 출력 중 해당하는 단 하나의 출력 라인만 1(HIGH)로 활성화하는 회로입니다.\n\n• 메모리 주소 지정이나 명령어 해독 장치(Decoder)의 핵심 원리입니다."
+            },
+            xorGateChain: {
+                title: "4비트 패리티 체인 (Parity)",
+                desc: "4개의 입력 비트 전체에 걸쳐 XOR 연산을 연속으로 수행하여, 입력된 1의 개수가 홀수 개인지 짝수 개인지 판별하는 패리티 체인 회로입니다.\n\n• 데이터 통신에서 에러(오류)를 검출하는 패리티 검사 부품의 기초가 됩니다."
+            }
+        };
+
+        window.showPresetDescription = function(type) {
+            const data = presetDescriptions[type];
+            if (!data) return;
+
+            const existing = document.getElementById('presetDescModal');
+            if (existing) existing.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'presetDescModal';
+            modal.className = 'absolute inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in';
+            modal.innerHTML = `
+                <div class="bg-slate-900 border border-indigo-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div class="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                            <i data-lucide="book-open" class="w-4 h-4"></i> ${data.title}
+                        </div>
+                        <button onclick="closePresetModal()" class="text-slate-400 hover:text-slate-200 text-xs font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition">✕</button>
+                    </div>
+                    <div class="text-xs text-slate-300 leading-relaxed whitespace-pre-line bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                        ${data.desc}
+                    </div>
+                    <div class="flex justify-end pt-2">
+                        <button onclick="closePresetModal(); loadPresetCircuit('${type}');" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg transition flex items-center gap-1.5">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i> 이 회로 불러오기
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.closePresetModal = function() {
+            const modal = document.getElementById('presetDescModal');
+            if (modal) modal.remove();
+        };
+
+        // --- Main Render Loop ---
+        function gameLoop() {
+            simulateCircuit();
+            checkStageCompletion();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function draw() {
+            if (!ctx || !canvas) return;
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply camera pan & zoom transform
+            ctx.save();
+            ctx.translate(panX, panY);
+            ctx.scale(zoom, zoom);
+
+            // Draw Background Grid Pattern
+            drawGrid();
+
+            // Draw Wires
+            for (let wire of wires) {
+                drawWire(wire);
+            }
+
+            // Draw active connecting wire preview
+            if (connectingPin) {
+                const startPos = connectingPin.node.getPinPos(connectingPin.type, connectingPin.index);
+                const worldMouse = screenToWorld(currentMousePos.x, currentMousePos.y);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(startPos.x, startPos.y);
+                ctx.lineTo(worldMouse.x, worldMouse.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw Nodes
+            for (let node of nodes) {
+                node.draw(ctx);
+            }
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        function drawGrid() {
+            const gridSize = 40;
+            const left = -panX / zoom;
+            const top = -panY / zoom;
+            const right = left + canvas.width / zoom;
+            const bottom = top + canvas.height / zoom;
+
+            const startX = Math.floor(left / gridSize) * gridSize;
+            const startY = Math.floor(top / gridSize) * gridSize;
+
+            // 그리드 선 색상을 더 진하게 조정하여 눈에 잘 띄도록 변경
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.45)';
+            ctx.lineWidth = 1.2 / zoom;
+
+            ctx.beginPath();
+            for (let x = startX; x < right; x += gridSize) {
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bottom);
+            }
+            for (let y = startY; y < bottom; y += gridSize) {
+                ctx.moveTo(left, y);
+                ctx.lineTo(right, y);
+            }
+            ctx.stroke();
+        }
+
+        function drawWire(wire) {
+            const p1 = wire.fromNode.getPinPos('out', wire.fromPin);
+            const p2 = wire.toNode.getPinPos('in', wire.toPin);
+            const active = wire.fromNode.outputs[wire.fromPin] && wire.fromNode.outputs[wire.fromPin].val === 1;
+            const isSelected = selectedWire === wire;
+
+            ctx.save();
+            ctx.strokeStyle = isSelected ? '#ffffff' : (active ? '#38bdf8' : '#334155');
+            ctx.lineWidth = isSelected ? 4 : (active ? 3 : 2);
+
+            // Bezier curve for wires
+            const dx = Math.abs(p2.x - p1.x) * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.bezierCurveTo(p1.x + dx, p1.y, p2.x - dx, p2.y, p2.x, p2.y);
+            ctx.stroke();
+
+            // Glowing effect for active signal wires
+            if (active) {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+                ctx.lineWidth = 6;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Initialize on window load
+        window.onload = function() {
+            initCanvas();
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            loadStage(0);
+        };
+    </script>
+</body>
+</html>
